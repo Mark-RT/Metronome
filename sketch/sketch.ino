@@ -9,37 +9,63 @@ GyverOLED<SSD1306_128x32, OLED_NO_BUFFER> oled;
 Encoder enc(CLK, DT, SW);
 
 #define pedal 3
-#define soundPin 11
-byte delayImp = 10;                      //длина сигнала
-int tones[] = {1950, 1000, 1000, 1000};  //высота тона
+#define soundPin 10
 
+int freq = 980;
+byte delayImp = 22;                      //длина сигнала
+int tones[] = {freq + 950, freq, freq, freq, freq, freq, freq, freq};  //высота тона
+
+byte beats[] = {2, 3, 5, 7};
 byte temp = 120;      //стартовое значения
 byte bits = 3;
 byte i = 0;
+byte u = 1;
 uint32_t btnTimer = 0;
 uint32_t timing1 = 0;
 uint32_t timing2 = 0;
 byte debounce_time = 110;
 
 bool play_flag = 0;
+bool beat_flag = 0;
 bool main_flag = 0;
+bool firstBeat_flag = 0;
 
-void oled_output(byte temp, byte bits) {
+void oled_output(byte temp, byte bits, bool beat_flag) {
   oled.home();
-  if (temp >= 100) {
-    oled.print(temp);
-    oled.print("   ");
-    oled.print(bits + 1);
+  if (!beat_flag) {
+    if (temp >= 100) {
+      oled.print(temp);
+      oled.print("   ");
+      oled.print(bits + 1);
+    }
+    else if (temp >= 10 && temp <= 99) {
+      oled.print(temp);
+      oled.print("    ");
+      oled.print(bits + 1);
+    }
+    else {
+      oled.print(temp);
+      oled.print("     ");
+      oled.print(bits + 1);
+    }
   }
-  else if (temp >= 10 && temp <= 99) {
-    oled.print(temp);
-    oled.print("    ");
-    oled.print(bits + 1);
-  }
-  else {
-    oled.print(temp);
-    oled.print("     ");
-    oled.print(bits + 1);
+
+  else if (beat_flag) {
+    if (temp >= 100) {
+      oled.print(temp);
+      oled.print("  *");
+      oled.print(bits + 1);
+    }
+    else if (temp >= 10 && temp <= 99) {
+      oled.print(temp);
+      oled.print("   *");
+      oled.print(bits + 1);
+    }
+    else {
+      oled.print(temp);
+      oled.print("    *");
+      oled.print(bits + 1);
+    }
   }
 }
 
@@ -59,33 +85,44 @@ void setup() {
   oled.init();
   oled.clear();
   oled.setScale(3);
-  oled_output(temp, bits);
+  oled_output(temp, bits, beat_flag);
 }
 
 void loop() {
   if (enc.isRight()) {
     temp++;
-    oled_output(temp, bits);
+    oled_output(temp, bits, beat_flag);
   }
   if (enc.isLeft()) {
     temp--;
-    oled_output(temp, bits);
+    oled_output(temp, bits, beat_flag);
   }
   if (enc.isFastR()) {
-    temp += 3;
-    oled_output(temp, bits);
+    temp += 4;
+    oled_output(temp, bits, beat_flag);
   }
   if (enc.isFastL()) {
-    temp -= 3;
-    oled_output(temp, bits);
+    temp -= 4;
+    oled_output(temp, bits, beat_flag);
   }
   if (enc.isRightH()) {
-    bits = 3;
-    oled_output(temp, bits);
+    u = (u == 3) ? 3 : u + 1;
+    bits = beats[u];
+    oled_output(temp, bits, beat_flag);
   }
   if (enc.isLeftH())  {
-    bits = 2;
-    oled_output(temp, bits);
+    u = (u == 0) ? 0 : u - 1;
+    bits = beats[u];
+    oled_output(temp, bits, beat_flag);
+  }
+  if (enc.isDouble()) {
+    beat_flag = !beat_flag;
+    oled_output(temp, bits, beat_flag);
+  }
+  if (enc.isSingle()) {
+    firstBeat_flag = !firstBeat_flag;
+    if (firstBeat_flag) tones[0] = freq;
+    else tones[0] = freq + 950;
   }
 
   if (!digitalRead(pedal) && !main_flag && millis() - btnTimer > debounce_time) {
@@ -107,12 +144,11 @@ void loop() {
     noTone(soundPin);
     i = (i > bits - 1) ? 0 : i + 1;
     timing2 = timing1 + ((60000 - delayImp) / (temp * 2));
-    Serial.println(timing1);
   }
 
-  if (play_flag && temp < 86 && millis() >= timing2 && millis() <= timing2 + 2) {
-    tone(soundPin, 1000);
-    delay(1);
+  if (play_flag && beat_flag && millis() >= timing2 && millis() <= timing2 + 2) {
+    tone(soundPin, freq - 50);
+    delay(delayImp / 2);
     noTone(soundPin);
   }
 }
