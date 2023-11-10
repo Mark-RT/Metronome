@@ -11,15 +11,15 @@ Encoder enc(CLK, DT, SW);
 #define pedal 3
 #define soundPin 10
 
-int freq = 980;
+int freq = 985;
 byte delayImp = 22;                      //длина сигнала
 int tones[] = {freq + 950, freq, freq, freq, freq, freq, freq, freq};  //высота тона
 
 byte beats[] = {2, 3, 5, 7};
 byte temp = 120;      //стартовое значения
-byte bits = 3;
 byte i = 0;
 byte u = 1;
+byte bits = beats[u];
 uint32_t btnTimer = 0;
 uint32_t timing1 = 0;
 uint32_t timing2 = 0;
@@ -49,7 +49,6 @@ void oled_output(byte temp, byte bits, bool beat_flag) {
       oled.print(bits + 1);
     }
   }
-
   else if (beat_flag) {
     if (temp >= 100) {
       oled.print(temp);
@@ -84,6 +83,9 @@ void setup() {
 
   oled.init();
   oled.clear();
+  oled.setCursor(0, 3);
+  oled.setScale(1);
+  oled.print("ON ");
   oled.setScale(3);
   oled_output(temp, bits, beat_flag);
 }
@@ -115,14 +117,26 @@ void loop() {
     bits = beats[u];
     oled_output(temp, bits, beat_flag);
   }
-  if (enc.isDouble()) {
+  if (enc.isSingle()) {
     beat_flag = !beat_flag;
     oled_output(temp, bits, beat_flag);
   }
-  if (enc.isSingle()) {
+  if (enc.isDouble()) {
     firstBeat_flag = !firstBeat_flag;
-    if (firstBeat_flag) tones[0] = freq;
-    else tones[0] = freq + 950;
+    if (firstBeat_flag) {
+      tones[0] = freq;
+      oled.setCursor(0, 3);
+      oled.setScale(1);
+      oled.print("OFF");
+      oled.setScale(3);
+    }
+    else {
+      tones[0] = freq + 950;
+      oled.setCursor(0, 3);
+      oled.setScale(1);
+      oled.print("ON ");
+      oled.setScale(3);
+    }
   }
 
   if (!digitalRead(pedal) && !main_flag && millis() - btnTimer > debounce_time) {
@@ -131,7 +145,6 @@ void loop() {
     i = 0;
     btnTimer = millis();
   }
-
   else if (digitalRead(pedal) && main_flag && millis() - btnTimer > debounce_time) {
     main_flag = 0;
     btnTimer = millis();
@@ -145,7 +158,6 @@ void loop() {
     i = (i > bits - 1) ? 0 : i + 1;
     timing2 = timing1 + ((60000 - delayImp) / (temp * 2));
   }
-
   if (play_flag && beat_flag && millis() >= timing2 && millis() <= timing2 + 2) {
     tone(soundPin, freq - 50);
     delay(delayImp / 2);
