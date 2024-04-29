@@ -8,8 +8,8 @@ GyverOLED<SSD1306_128x32, OLED_NO_BUFFER> oled;
 #define SW 4
 Encoder enc(CLK, DT, SW);
 
-#define pedal 3
-#define soundPin 10
+#define pedal 2
+#define soundPin 11
 
 int freq = 985;
 byte delayImp = 22;                      //длина сигнала
@@ -151,6 +151,7 @@ void loop() {
   }
 
   if (play_flag && millis() - timing1 > (60000 - delayImp) / temp) {
+    Serial.println(millis());
     timing1 = millis();
     tone(soundPin, tones[i]);
     delay(delayImp);
@@ -159,7 +160,7 @@ void loop() {
     timing2 = timing1 + ((60000 - delayImp) / (temp * 2));
   }
   if (play_flag && beat_flag && millis() >= timing2 && millis() <= timing2 + 2) {
-    tone(soundPin, freq - 50);
+    tone(soundPin, freq);
     delay(delayImp / 2);
     noTone(soundPin);
   }
